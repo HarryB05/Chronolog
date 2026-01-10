@@ -21,33 +21,27 @@
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
-      "require": "./dist/index.js",
       "default": "./dist/index.js"
     },
     "./client": {
       "types": "./dist/client.d.ts",
       "import": "./dist/client.js",
-      "require": "./dist/client.js",
       "default": "./dist/client.js"
     },
     "./admin/page": {
       "import": "./dist/admin/page.js",
-      "require": "./dist/admin/page.js",
       "default": "./dist/admin/page.js"
     },
     "./admin/media": {
       "import": "./dist/admin/media.js",
-      "require": "./dist/admin/media.js",
       "default": "./dist/admin/media.js"
     },
     "./admin/components/Editor": {
       "import": "./dist/admin/components/Editor.js",
-      "require": "./dist/admin/components/Editor.js",
       "default": "./dist/admin/components/Editor.js"
     },
     "./admin/settings": {
       "import": "./dist/admin/settings.js",
-      "require": "./dist/admin/settings.js",
       "default": "./dist/admin/settings.js"
     },
     "./chronalog.css": "./dist/chronalog.css",
