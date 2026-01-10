@@ -1354,8 +1354,8 @@ function ChangelogAdminPage() {
                         pre: ({ children }) => /* @__PURE__ */ jsx5("pre", { className: "overflow-x-auto rounded-lg bg-zinc-100 p-3 text-xs dark:bg-zinc-800", children }),
                         a: ({ href, children }) => /* @__PURE__ */ jsx5("a", { href, className: "text-blue-600 underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300", children }),
                         blockquote: ({ children }) => /* @__PURE__ */ jsx5("blockquote", { className: "border-l-2 border-zinc-300 pl-3 italic dark:border-zinc-700", children }),
-                        img: ({ src, alt }) => {
-                          let imageSrc = src || "";
+                        img: (props) => {
+                          let imageSrc = typeof props.src === "string" ? props.src : "";
                           if (imageSrc.startsWith("chronalog/")) {
                             imageSrc = `/${imageSrc}`;
                           } else if (!imageSrc.startsWith("/") && !imageSrc.startsWith("http")) {
@@ -1364,8 +1364,9 @@ function ChangelogAdminPage() {
                           return /* @__PURE__ */ jsx5(
                             "img",
                             {
+                              ...props,
                               src: imageSrc,
-                              alt: alt || "",
+                              alt: props.alt || "",
                               className: "my-4 max-w-full rounded-lg border border-zinc-200 dark:border-zinc-800",
                               onError: (e) => {
                                 const target = e.target;

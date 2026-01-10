@@ -30,18 +30,22 @@
       "default": "./dist/client.js"
     },
     "./admin/page": {
+      "types": "./dist/admin/page.d.ts",
       "import": "./dist/admin/page.js",
       "default": "./dist/admin/page.js"
     },
     "./admin/media": {
+      "types": "./dist/admin/media.d.ts",
       "import": "./dist/admin/media.js",
       "default": "./dist/admin/media.js"
     },
     "./admin/components/Editor": {
+      "types": "./dist/admin/components/Editor.d.ts",
       "import": "./dist/admin/components/Editor.js",
       "default": "./dist/admin/components/Editor.js"
     },
     "./admin/settings": {
+      "types": "./dist/admin/settings.d.ts",
       "import": "./dist/admin/settings.js",
       "default": "./dist/admin/settings.js"
     },
@@ -63,6 +67,8 @@
   "devDependencies": {
     "@tailwindcss/cli": "^4.0.0",
     "@types/node": "^25.0.3",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
     "tsup": "^8.5.1",
     "typescript": "^5.9.3"
   },

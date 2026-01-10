@@ -1258,9 +1258,9 @@ export default function ChangelogAdminPage() {
                                 pre: ({ children }: { children?: React.ReactNode }) => <pre className="overflow-x-auto rounded-lg bg-zinc-100 p-3 text-xs dark:bg-zinc-800">{children}</pre>,
                                 a: ({ href, children }: { href?: string; children?: React.ReactNode }) => <a href={href} className="text-blue-600 underline hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300">{children}</a>,
                                 blockquote: ({ children }: { children?: React.ReactNode }) => <blockquote className="border-l-2 border-zinc-300 pl-3 italic dark:border-zinc-700">{children}</blockquote>,
-                                img: ({ src, alt }: { src?: string; alt?: string }) => {
+                                img: (props: React.ImgHTMLAttributes<HTMLImageElement>) => {
                                   // Normalise image paths
-                                  let imageSrc = src || ""
+                                  let imageSrc = typeof props.src === "string" ? props.src : ""
                                   if (imageSrc.startsWith("chronalog/")) {
                                     imageSrc = `/${imageSrc}`
                                   } else if (!imageSrc.startsWith("/") && !imageSrc.startsWith("http")) {
@@ -1268,8 +1268,9 @@ export default function ChangelogAdminPage() {
                                   }
                                   return (
                                     <img
+                                      {...props}
                                       src={imageSrc}
-                                      alt={alt || ""}
+                                      alt={props.alt || ""}
                                       className="my-4 max-w-full rounded-lg border border-zinc-200 dark:border-zinc-800"
                                       onError={(e) => {
                                         const target = e.target as HTMLImageElement

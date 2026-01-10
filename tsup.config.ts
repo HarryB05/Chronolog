@@ -26,7 +26,9 @@ export default defineConfig([
       "utils/auth/hooks": "src/utils/auth/hooks.tsx"
     },
     format: ["esm"],
-    dts: false, // Skip DTS for admin components (client-side React components)
+    dts: {
+      entry: ["src/admin/page.tsx", "src/admin/media.tsx", "src/admin/components/Editor.tsx", "src/admin/settings.tsx"]
+    },
     clean: false,
     external: ["react", "react-dom", "next", "next/link", "next/navigation", "lucide-react", "@tanstack/react-query"],
   }
