@@ -188,10 +188,13 @@ export async function GET() {
     const remoteUrl = getGitRemoteUrl();
     const branch = getGitBranch() || 'main';
 
+    // Token priority: 1. User session token, 2. CHRONALOG_GITHUB_TOKEN env var, 3. No token (public repos)
+    const accessToken = session?.access_token || process.env.CHRONALOG_GITHUB_TOKEN || undefined;
+
     // List changelog entries (uses GitHub API in serverless, filesystem in dev)
     // For public repos, we can try without access token
     const entries = await listChangelogEntries(undefined, {
-      accessToken: session?.access_token || undefined,
+      accessToken,
       remoteUrl,
       branch,
     });
@@ -240,8 +243,11 @@ export async function GET() {
     const remoteUrl = getGitRemoteUrl();
     const branch = getGitBranch() || 'main';
 
+    // Token priority: 1. User session token, 2. CHRONALOG_GITHUB_TOKEN env var, 3. No token (public repos)
+    const accessToken = session?.access_token || process.env.CHRONALOG_GITHUB_TOKEN || undefined;
+
     const entries = await listChangelogEntries(undefined, {
-      accessToken: session?.access_token || undefined,
+      accessToken,
       remoteUrl,
       branch,
     });
@@ -656,7 +662,7 @@ if (!fs.existsSync(apiTagsRoutePath)) {
   }
 
   const apiTagsContent = `import { NextResponse } from "next/server"
-import { readPredefinedTags, savePredefinedTags, getLoginSession, getGitRemoteUrl, getGitBranch } from "chronalog"
+import { readPredefinedTags, savePredefinedTags, readPredefinedTagsViaGitHub, savePredefinedTagsViaGitHub, getLoginSession, getGitRemoteUrl, getGitBranch } from "chronalog"
 
 export async function GET() {
   const session = await getLoginSession()
@@ -670,7 +676,20 @@ export async function GET() {
   try {
     const remoteUrl = getGitRemoteUrl();
     const branch = getGitBranch() || 'main';
-    const tags = await readPredefinedTags(undefined, { accessToken: session.access_token, remoteUrl, branch });
+    
+    // Token priority: 1. User session token, 2. CHRONALOG_GITHUB_TOKEN env var
+    const accessToken = session.access_token || process.env.CHRONALOG_GITHUB_TOKEN;
+    
+    // Use GitHub API in serverless environments, otherwise use local filesystem
+    const isServerless = process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
+    let tags;
+    
+    if (isServerless && accessToken && remoteUrl) {
+      tags = await readPredefinedTagsViaGitHub(accessToken, remoteUrl, 'chronalog', branch);
+    } else {
+      tags = readPredefinedTags();
+    }
+    
     return NextResponse.json(
       {
         success: true,
@@ -712,7 +731,19 @@ export async function POST(request: Request) {
 
     const remoteUrl = getGitRemoteUrl();
     const branch = getGitBranch() || 'main';
-    const result = await savePredefinedTags(tags, undefined, { accessToken: session.access_token, remoteUrl, branch });
+    
+    // Token priority: 1. User session token, 2. CHRONALOG_GITHUB_TOKEN env var
+    const accessToken = session.access_token || process.env.CHRONALOG_GITHUB_TOKEN;
+    
+    // Use GitHub API in serverless environments, otherwise use local filesystem
+    const isServerless = process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
+    let result;
+    
+    if (isServerless && accessToken && remoteUrl) {
+      result = await savePredefinedTagsViaGitHub(tags, accessToken, remoteUrl, 'chronalog', branch);
+    } else {
+      result = savePredefinedTags(tags);
+    }
 
     if (!result.success) {
       return NextResponse.json(
@@ -760,7 +791,7 @@ if (!fs.existsSync(apiCommitsRoutePath)) {
   }
 
   const apiCommitsContent = `import { NextResponse } from "next/server"
-import { getGitCommitHistory, getLoginSession, getGitRemoteUrl, getGitBranch } from "chronalog"
+import { getGitCommitHistory, getGitCommitHistoryViaGitHub, getLoginSession, getGitRemoteUrl, getGitBranch } from "chronalog"
 
 export async function GET() {
   const session = await getLoginSession()
@@ -774,7 +805,19 @@ export async function GET() {
   try {
     const remoteUrl = getGitRemoteUrl();
     const branch = getGitBranch() || 'main';
-    const commits = await getGitCommitHistory(50, { accessToken: session.access_token, remoteUrl, branch })
+    
+    // Token priority: 1. User session token, 2. CHRONALOG_GITHUB_TOKEN env var
+    const accessToken = session.access_token || process.env.CHRONALOG_GITHUB_TOKEN;
+    
+    // Use GitHub API in serverless environments, otherwise use local Git
+    const isServerless = process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
+    let commits;
+    
+    if (isServerless && accessToken && remoteUrl) {
+      commits = await getGitCommitHistoryViaGitHub(accessToken, remoteUrl, 50, branch);
+    } else {
+      commits = await getGitCommitHistory(50);
+    }
     
     const formattedCommits = commits.map((commit) => ({
       hash: commit.hash,
@@ -820,7 +863,7 @@ if (!fs.existsSync(apiHomeUrlRoutePath)) {
   }
 
   const apiHomeUrlContent = `import { NextResponse } from "next/server"
-import { loadChronalogConfig, saveHomeUrl, getLoginSession, getGitRemoteUrl, getGitBranch } from "chronalog"
+import { loadChronalogConfig, saveHomeUrl, saveHomeUrlViaGitHub, readHomeUrlViaGitHub, getLoginSession, getGitRemoteUrl, getGitBranch } from "chronalog"
 
 export async function GET() {
   const session = await getLoginSession()
@@ -834,8 +877,20 @@ export async function GET() {
   try {
     const remoteUrl = getGitRemoteUrl();
     const branch = getGitBranch() || 'main';
-    const config = await loadChronalogConfig(undefined, { accessToken: session.access_token, remoteUrl, branch });
-    const homeUrl = config.homeUrl || "/"
+    
+    // Token priority: 1. User session token, 2. CHRONALOG_GITHUB_TOKEN env var
+    const accessToken = session.access_token || process.env.CHRONALOG_GITHUB_TOKEN;
+    
+    // Use GitHub API in serverless environments, otherwise use local filesystem
+    const isServerless = process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
+    let homeUrl = "/";
+    
+    if (isServerless && accessToken && remoteUrl) {
+      homeUrl = await readHomeUrlViaGitHub(accessToken, remoteUrl, 'chronalog', branch) || "/";
+    } else {
+      const config = loadChronalogConfig();
+      homeUrl = config.homeUrl || "/";
+    }
     
     return NextResponse.json(
       {
@@ -878,7 +933,19 @@ export async function POST(request: Request) {
 
     const remoteUrl = getGitRemoteUrl();
     const branch = getGitBranch() || 'main';
-    const result = await saveHomeUrl(homeUrl, undefined, { accessToken: session.access_token, remoteUrl, branch });
+    
+    // Token priority: 1. User session token, 2. CHRONALOG_GITHUB_TOKEN env var
+    const accessToken = session.access_token || process.env.CHRONALOG_GITHUB_TOKEN;
+    
+    // Use GitHub API in serverless environments, otherwise use local filesystem
+    const isServerless = process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME;
+    let result;
+    
+    if (isServerless && accessToken && remoteUrl) {
+      result = await saveHomeUrlViaGitHub(homeUrl, accessToken, remoteUrl, 'chronalog', branch);
+    } else {
+      result = saveHomeUrl(homeUrl);
+    }
 
     if (!result.success) {
       return NextResponse.json(
@@ -945,16 +1012,9 @@ export async function GET() {
   }
 
   try {
-    const remoteUrl = getGitRemoteUrl();
-    const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
-    if (!repoInfo) {
-      return NextResponse.json(
-        { error: "Invalid Git remote URL" },
-        { status: 400 }
-      );
-    }
-    const branch = getGitBranch() || 'main';
-    const files = await listMediaFiles(undefined, { accessToken: session.access_token, repoOwner: repoInfo.owner, repoName: repoInfo.name, branch });
+    // Note: Media files are currently only supported via local filesystem
+    // GitHub API support for media files may be added in the future
+    const files = listMediaFiles();
     
     const formattedFiles = files.map((file) => ({
       filename: file.filename,
@@ -1038,12 +1098,9 @@ export async function POST(request: Request) {
       const arrayBuffer = await file.arrayBuffer()
       const buffer = Buffer.from(arrayBuffer)
 
-      const url = await saveMediaFile(buffer, file.name, undefined, {
-        accessToken: session.access_token,
-        repoOwner: repoInfo.owner,
-        repoName: repoInfo.name,
-        branch,
-      })
+      // Note: Media files are currently only supported via local filesystem
+      // GitHub API support for media files may be added in the future
+      const url = saveMediaFile(buffer, file.name)
 
       uploadedFiles.push({
         filename: file.name,
