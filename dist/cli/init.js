@@ -4,7 +4,39 @@
 import fs from "fs";
 import path from "path";
 var cwd = process.cwd();
+var packageJsonPath = path.join(cwd, "package.json");
+if (!fs.existsSync(packageJsonPath)) {
+  console.error("\u274C Error: No package.json found. Please run this command in a Next.js project directory.");
+  process.exit(1);
+}
+var packageJson;
+try {
+  packageJson = JSON.parse(fs.readFileSync(packageJsonPath, "utf-8"));
+} catch (error) {
+  console.error("\u274C Error: Failed to read package.json");
+  process.exit(1);
+}
+var hasNext = packageJson.dependencies?.next || packageJson.devDependencies?.next;
+if (!hasNext) {
+  console.error("\u274C Error: Next.js is not installed. Chronalog requires Next.js 14.0.0 or higher.");
+  console.error("   Install Next.js with: pnpm add next react react-dom");
+  process.exit(1);
+}
 var appDir = path.join(cwd, "app");
+var pagesDir = path.join(cwd, "pages");
+if (!fs.existsSync(appDir)) {
+  if (fs.existsSync(pagesDir)) {
+    console.error("\u274C Error: Chronalog requires Next.js App Router (app directory), but this project uses Pages Router (pages directory).");
+    console.error("   Please migrate to App Router or create an app directory in your Next.js project.");
+    console.error("   See: https://nextjs.org/docs/app/building-your-application/upgrading/app-router-migration");
+    process.exit(1);
+  } else {
+    console.error("\u274C Error: No app directory found. Chronalog requires Next.js App Router.");
+    console.error("   Please create an app directory in your Next.js project root.");
+    console.error("   You can create it with: mkdir app");
+    process.exit(1);
+  }
+}
 var cmsRouteGroupDir = path.join(appDir, "(cms)");
 var chronalogAdminDir = path.join(cmsRouteGroupDir, "chronalog");
 var layoutPath = path.join(cmsRouteGroupDir, "layout.tsx");
@@ -16,10 +48,6 @@ var apiListRoutePath = path.join(apiListDir, "route.ts");
 var apiLatestDir = path.join(appDir, "api", "changelog", "latest");
 var apiLatestRoutePath = path.join(apiLatestDir, "route.ts");
 var configPath = path.join(cwd, "changelog.config.ts");
-if (!fs.existsSync(appDir)) {
-  console.error("Chronalog must be run inside a Next.js project (missing /app)");
-  process.exit(1);
-}
 if (!fs.existsSync(cmsRouteGroupDir)) {
   fs.mkdirSync(cmsRouteGroupDir, { recursive: true });
   console.log("\u2713 Created /app/(cms)");
