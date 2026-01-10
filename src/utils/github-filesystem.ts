@@ -193,6 +193,13 @@ export async function listChangelogEntriesViaGitHub(
   changelogDir?: string,
   branch: string = 'main'
 ): Promise<ParsedChangelogEntry[]> {
+  console.log('[Chronalog] listChangelogEntriesViaGitHub called with:', {
+    hasAccessToken: !!accessToken,
+    remoteUrl,
+    changelogDir,
+    branch,
+  })
+  
   // If no remote URL, try to get from environment variables (serverless)
   if (!remoteUrl) {
     // First check Vercel's automatic variables (if connected to git)
@@ -220,6 +227,13 @@ export async function listChangelogEntriesViaGitHub(
 
   const config = loadChronalogConfig()
   const targetDir = changelogDir || config.changelogDir
+  
+  console.log('[Chronalog] Using target directory:', targetDir)
+  console.log('[Chronalog] Repository info:', {
+    owner: repoInfo.owner,
+    name: repoInfo.name,
+    branch,
+  })
 
   // For public repos, we can use REST API without auth
   // For private repos or when we have a token, use GraphQL
@@ -233,17 +247,64 @@ export async function listChangelogEntriesViaGitHub(
     // Use REST API for public repos (no auth required)
     try {
       const url = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.name}/contents/${targetDir}?ref=${branch}`
+      console.log(`[Chronalog] Fetching directory contents from GitHub API: ${url}`)
       const response = await fetch(url)
+      console.log(`[Chronalog] GitHub API response status: ${response.status} ${response.statusText}`)
+      
       if (response.ok) {
         const data = await response.json()
+        console.log(`[Chronalog] GitHub API returned data:`, {
+          isArray: Array.isArray(data),
+          itemCount: Array.isArray(data) ? data.length : 'not an array',
+          dataType: typeof data,
+        })
         files = Array.isArray(data) ? data.map((item: any) => ({
           path: item.path,
           name: item.name,
           type: item.type,
         })) : []
+        console.log(`[Chronalog] Processed ${files.length} files from directory listing`)
+      } else {
+        // Response was not OK - log the error details
+        const errorText = await response.text().catch(() => 'Could not read error response')
+        let errorData: any = {}
+        try {
+          errorData = JSON.parse(errorText)
+        } catch {
+          // Not JSON, use raw text
+        }
+        
+        console.error(`[Chronalog] GitHub API error (${response.status}):`, {
+          status: response.status,
+          statusText: response.statusText,
+          url,
+          errorBody: errorText,
+          errorMessage: errorData.message || errorText,
+          headers: Object.fromEntries(response.headers.entries()),
+        })
+        
+        // If it's a 403, the repo might be private and we need authentication
+        if (response.status === 403) {
+          const errorMsg = errorData.message || errorText
+          if (errorMsg.includes('private') || errorMsg.includes('permission') || errorMsg.includes('Forbidden')) {
+            throw new Error(`Repository appears to be private. An access token is required to access private repositories. Error: ${errorMsg}`)
+          }
+          // Might be rate limiting
+          if (errorMsg.includes('rate limit') || response.headers.get('x-ratelimit-remaining') === '0') {
+            throw new Error(`GitHub API rate limit exceeded. Please try again later or use an access token for higher limits.`)
+          }
+        }
+        
+        // If it's a 404, the path might be wrong
+        if (response.status === 404) {
+          throw new Error(`Changelog directory not found at path: ${targetDir}. Please check that the directory exists in the repository at branch '${branch}'.`)
+        }
+        
+        // For other errors, throw with details
+        throw new Error(`Failed to fetch directory contents from GitHub API: ${response.status} ${response.statusText}. ${errorData.message || errorText}`)
       }
     } catch (error) {
-      console.error('Failed to list files via REST API:', error)
+      console.error('[Chronalog] Failed to list files via REST API:', error)
       throw error
     }
   }
@@ -273,10 +334,22 @@ export async function listChangelogEntriesViaGitHub(
             const data = await response.json()
             if (data.content && data.encoding === 'base64') {
               content = Buffer.from(data.content, 'base64').toString('utf-8')
+            } else {
+              console.warn(`[Chronalog] File ${file.name} missing content or wrong encoding:`, {
+                hasContent: !!data.content,
+                encoding: data.encoding,
+              })
             }
+          } else {
+            const errorText = await response.text().catch(() => 'Could not read error response')
+            console.warn(`[Chronalog] Failed to fetch ${file.name} via REST API (${response.status}):`, {
+              status: response.status,
+              statusText: response.statusText,
+              errorBody: errorText,
+            })
           }
         } catch (error) {
-          console.warn(`Failed to fetch ${file.name} via REST API:`, error)
+          console.warn(`[Chronalog] Failed to fetch ${file.name} via REST API:`, error)
         }
       }
       
