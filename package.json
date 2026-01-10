@@ -1,6 +1,6 @@
 {
   "name": "chronalog",
-  "version": "0.1.12",
+  "version": "0.2.0",
   "description": "Git-backed changelog system for Next.js",
   "type": "module",
   "license": "MIT",
