@@ -334,6 +334,28 @@ export { default } from "chronalog/admin-settings"
   console.log("✓ /app/(cms)/chronalog/settings/page.tsx already exists")
 }
 
+// Scaffold the media page if it doesn't exist
+const mediaPageDir = path.join(chronalogAdminDir, "media")
+const mediaPagePath = path.join(mediaPageDir, "page.tsx")
+if (!fs.existsSync(mediaPagePath)) {
+  // Create media directory
+  if (!fs.existsSync(mediaPageDir)) {
+    fs.mkdirSync(mediaPageDir, { recursive: true })
+    console.log("✓ Created /app/(cms)/chronalog/media")
+  }
+
+  const mediaPageContent = `"use client"
+
+import "chronalog/chronalog.css"
+export { default } from "chronalog/admin-media"
+`
+
+  fs.writeFileSync(mediaPagePath, mediaPageContent, "utf-8")
+  console.log("✓ Created /app/(cms)/chronalog/media/page.tsx")
+} else {
+  console.log("✓ /app/(cms)/chronalog/media/page.tsx already exists")
+}
+
 // Scaffold auth API routes
 const apiAuthDir = path.join(appDir, "api", "changelog", "auth")
 const apiAuthLoginDir = path.join(apiAuthDir, "login")
@@ -575,6 +597,491 @@ export async function GET(req: NextRequest) {
   console.log("✓ Created /app/api/changelog/auth/signout/route.ts")
 } else {
   console.log("✓ /app/api/changelog/auth/signout/route.ts already exists")
+}
+
+// Scaffold tags API route if it doesn't exist
+const apiTagsDir = path.join(appDir, "api", "changelog", "tags")
+const apiTagsRoutePath = path.join(apiTagsDir, "route.ts")
+if (!fs.existsSync(apiTagsRoutePath)) {
+  if (!fs.existsSync(apiTagsDir)) {
+    fs.mkdirSync(apiTagsDir, { recursive: true })
+    console.log("✓ Created /app/api/changelog/tags")
+  }
+
+  const apiTagsContent = `import { NextResponse } from "next/server"
+import { readPredefinedTags, savePredefinedTags, getLoginSession } from "chronalog"
+
+export async function GET() {
+  const session = await getLoginSession()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const tags = readPredefinedTags()
+    return NextResponse.json(
+      {
+        success: true,
+        tags,
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error reading predefined tags:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to read predefined tags",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  const session = await getLoginSession()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const body = await request.json()
+    const { tags } = body
+
+    if (!Array.isArray(tags)) {
+      return NextResponse.json(
+        { error: "Tags must be an array" },
+        { status: 400 }
+      )
+    }
+
+    const result = savePredefinedTags(tags)
+
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: "Failed to save predefined tags",
+          details: result.error || "Unknown error",
+        },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Tags saved successfully",
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error saving predefined tags:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to save predefined tags",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+`
+
+  fs.writeFileSync(apiTagsRoutePath, apiTagsContent, "utf-8")
+  console.log("✓ Created /app/api/changelog/tags/route.ts")
+} else {
+  console.log("✓ /app/api/changelog/tags/route.ts already exists")
+}
+
+// Scaffold commits API route if it doesn't exist
+const apiCommitsDir = path.join(appDir, "api", "changelog", "commits")
+const apiCommitsRoutePath = path.join(apiCommitsDir, "route.ts")
+if (!fs.existsSync(apiCommitsRoutePath)) {
+  if (!fs.existsSync(apiCommitsDir)) {
+    fs.mkdirSync(apiCommitsDir, { recursive: true })
+    console.log("✓ Created /app/api/changelog/commits")
+  }
+
+  const apiCommitsContent = `import { NextResponse } from "next/server"
+import { getGitCommitHistory, getLoginSession } from "chronalog"
+
+export async function GET() {
+  const session = await getLoginSession()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const commits = getGitCommitHistory(50)
+    
+    const formattedCommits = commits.map((commit) => ({
+      hash: commit.hash,
+      shortHash: commit.hash.substring(0, 7),
+      message: commit.message,
+      author: commit.author,
+      date: commit.date,
+    }))
+
+    return NextResponse.json(
+      {
+        success: true,
+        commits: formattedCommits,
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error fetching git commits:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to fetch git commits",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+`
+
+  fs.writeFileSync(apiCommitsRoutePath, apiCommitsContent, "utf-8")
+  console.log("✓ Created /app/api/changelog/commits/route.ts")
+} else {
+  console.log("✓ /app/api/changelog/commits/route.ts already exists")
+}
+
+// Scaffold home-url API route if it doesn't exist
+const apiHomeUrlDir = path.join(appDir, "api", "changelog", "home-url")
+const apiHomeUrlRoutePath = path.join(apiHomeUrlDir, "route.ts")
+if (!fs.existsSync(apiHomeUrlRoutePath)) {
+  if (!fs.existsSync(apiHomeUrlDir)) {
+    fs.mkdirSync(apiHomeUrlDir, { recursive: true })
+    console.log("✓ Created /app/api/changelog/home-url")
+  }
+
+  const apiHomeUrlContent = `import { NextResponse } from "next/server"
+import { loadChronalogConfig, saveHomeUrl, getLoginSession } from "chronalog"
+
+export async function GET() {
+  const session = await getLoginSession()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const config = loadChronalogConfig()
+    const homeUrl = config.homeUrl || "/"
+    
+    return NextResponse.json(
+      {
+        success: true,
+        homeUrl,
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error reading home URL:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to read home URL",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+
+export async function POST(request: Request) {
+  const session = await getLoginSession()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const body = await request.json()
+    const { homeUrl } = body
+
+    if (typeof homeUrl !== "string") {
+      return NextResponse.json(
+        { error: "Home URL must be a string" },
+        { status: 400 }
+      )
+    }
+
+    const result = saveHomeUrl(homeUrl)
+
+    if (!result.success) {
+      return NextResponse.json(
+        {
+          error: "Failed to save home URL",
+          details: result.error || "Unknown error",
+        },
+        { status: 500 }
+      )
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "Home URL saved successfully",
+        homeUrl,
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error saving home URL:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to save home URL",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+`
+
+  fs.writeFileSync(apiHomeUrlRoutePath, apiHomeUrlContent, "utf-8")
+  console.log("✓ Created /app/api/changelog/home-url/route.ts")
+} else {
+  console.log("✓ /app/api/changelog/home-url/route.ts already exists")
+}
+
+// Scaffold media API routes if they don't exist
+const apiMediaDir = path.join(appDir, "api", "changelog", "media")
+const apiMediaListDir = path.join(apiMediaDir, "list")
+const apiMediaListRoutePath = path.join(apiMediaListDir, "route.ts")
+const apiMediaUploadDir = path.join(apiMediaDir, "upload")
+const apiMediaUploadRoutePath = path.join(apiMediaUploadDir, "route.ts")
+const apiMediaDeleteDir = path.join(apiMediaDir, "delete")
+const apiMediaDeleteRoutePath = path.join(apiMediaDeleteDir, "route.ts")
+
+// List route
+if (!fs.existsSync(apiMediaListRoutePath)) {
+  if (!fs.existsSync(apiMediaListDir)) {
+    fs.mkdirSync(apiMediaListDir, { recursive: true })
+  }
+
+  const apiMediaListContent = `import { NextResponse } from "next/server"
+import { listMediaFiles, getLoginSession } from "chronalog"
+
+export async function GET() {
+  const session = await getLoginSession()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const files = listMediaFiles()
+    
+    const formattedFiles = files.map((file) => ({
+      filename: file.filename,
+      url: file.url,
+      size: file.size,
+      modified: file.modified.toISOString(),
+    }))
+
+    return NextResponse.json(
+      {
+        success: true,
+        files: formattedFiles,
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error listing media files:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to list media files",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+`
+
+  fs.writeFileSync(apiMediaListRoutePath, apiMediaListContent, "utf-8")
+  console.log("✓ Created /app/api/changelog/media/list/route.ts")
+} else {
+  console.log("✓ /app/api/changelog/media/list/route.ts already exists")
+}
+
+// Upload route
+if (!fs.existsSync(apiMediaUploadRoutePath)) {
+  if (!fs.existsSync(apiMediaUploadDir)) {
+    fs.mkdirSync(apiMediaUploadDir, { recursive: true })
+  }
+
+  const apiMediaUploadContent = `import { NextResponse } from "next/server"
+import { saveMediaFile, getLoginSession } from "chronalog"
+
+export async function POST(request: Request) {
+  const session = await getLoginSession()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const formData = await request.formData()
+    const files = formData.getAll("files") as File[]
+
+    if (files.length === 0) {
+      return NextResponse.json(
+        { error: "No files provided" },
+        { status: 400 }
+      )
+    }
+
+    const uploadedFiles: Array<{ filename: string; url: string }> = []
+
+    for (const file of files) {
+      if (!file.type.startsWith("image/")) {
+        continue
+      }
+
+      const arrayBuffer = await file.arrayBuffer()
+      const buffer = Buffer.from(arrayBuffer)
+
+      const url = saveMediaFile(buffer, file.name)
+
+      uploadedFiles.push({
+        filename: file.name,
+        url,
+      })
+    }
+
+    if (uploadedFiles.length === 0) {
+      return NextResponse.json(
+        { error: "No valid image files were uploaded" },
+        { status: 400 }
+      )
+    }
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: \`Successfully uploaded \${uploadedFiles.length} file(s)\`,
+        files: uploadedFiles,
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error uploading media files:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to upload media files",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+`
+
+  fs.writeFileSync(apiMediaUploadRoutePath, apiMediaUploadContent, "utf-8")
+  console.log("✓ Created /app/api/changelog/media/upload/route.ts")
+} else {
+  console.log("✓ /app/api/changelog/media/upload/route.ts already exists")
+}
+
+// Delete route
+if (!fs.existsSync(apiMediaDeleteRoutePath)) {
+  if (!fs.existsSync(apiMediaDeleteDir)) {
+    fs.mkdirSync(apiMediaDeleteDir, { recursive: true })
+  }
+
+  const apiMediaDeleteContent = `import { NextResponse } from "next/server"
+import { getLoginSession } from "chronalog"
+import fs from "fs"
+import path from "path"
+
+export async function POST(request: Request) {
+  const session = await getLoginSession()
+  if (!session) {
+    return NextResponse.json(
+      { error: "Unauthorized" },
+      { status: 401 }
+    )
+  }
+
+  try {
+    const body = await request.json()
+    const { filename } = body
+
+    if (!filename || typeof filename !== "string") {
+      return NextResponse.json(
+        { error: "Filename is required" },
+        { status: 400 }
+      )
+    }
+
+    const sanitizedFilename = filename
+      .replace(/[^a-zA-Z0-9._-]/g, "-")
+      .replace(/^-+|-+$/g, "")
+
+    const mediaDir = path.join(process.cwd(), "public", "chronalog")
+    const filePath = path.join(mediaDir, sanitizedFilename)
+
+    if (!filePath.startsWith(mediaDir)) {
+      return NextResponse.json(
+        { error: "Invalid file path" },
+        { status: 400 }
+      )
+    }
+
+    if (!fs.existsSync(filePath)) {
+      return NextResponse.json(
+        { error: "File not found" },
+        { status: 404 }
+      )
+    }
+
+    fs.unlinkSync(filePath)
+
+    return NextResponse.json(
+      {
+        success: true,
+        message: "File deleted successfully",
+      },
+      { status: 200 }
+    )
+  } catch (error) {
+    console.error("Error deleting media file:", error)
+    return NextResponse.json(
+      {
+        error: "Failed to delete media file",
+        details: error instanceof Error ? error.message : "Unknown error",
+      },
+      { status: 500 }
+    )
+  }
+}
+`
+
+  fs.writeFileSync(apiMediaDeleteRoutePath, apiMediaDeleteContent, "utf-8")
+  console.log("✓ Created /app/api/changelog/media/delete/route.ts")
+} else {
+  console.log("✓ /app/api/changelog/media/delete/route.ts already exists")
 }
 
 // Scaffold config file if it doesn't exist
