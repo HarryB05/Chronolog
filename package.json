@@ -58,7 +58,7 @@
     "chronalog": "./dist/cli/init.js"
   },
   "scripts": {
-    "build": "tsup && pnpm exec tailwindcss -i ./src/styles/styles.css -o ./dist/chronalog.css",
+    "build": "tsup && pnpm exec tailwindcss -i ./src/styles/styles.css -o ./dist/chronalog.css && node scripts/move-dts.js",
     "dev": "tsup --watch",
     "lint": "eslint .",
     "prepare": "pnpm build",
