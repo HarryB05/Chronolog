@@ -242,6 +242,9 @@ export async function GET() {
     const envVars = {
       CHRONALOG_GITHUB_ID: !!process.env.CHRONALOG_GITHUB_ID,
       CHRONALOG_GITHUB_SECRET: !!process.env.CHRONALOG_GITHUB_SECRET,
+      CHRONALOG_REPO_OWNER: !!process.env.CHRONALOG_REPO_OWNER,
+      CHRONALOG_REPO_SLUG: !!process.env.CHRONALOG_REPO_SLUG,
+      CHRONALOG_REPO_BRANCH: !!process.env.CHRONALOG_REPO_BRANCH,
     }
     const allEnvVarsSet = envVars.CHRONALOG_GITHUB_ID && envVars.CHRONALOG_GITHUB_SECRET
 
@@ -368,10 +371,26 @@ export async function GET() {
   if (!process.env.CHRONALOG_GITHUB_SECRET) {
     missing.push('CHRONALOG_GITHUB_SECRET')
   }
+  
+  // Check repository variables (only required in serverless without Git connection)
+  const isServerless = process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME
+  const hasVercelGitVars = process.env.VERCEL_GIT_REPO_URL || (process.env.VERCEL_GIT_REPO_OWNER && process.env.VERCEL_GIT_REPO_SLUG)
+  
+  if (isServerless && !hasVercelGitVars) {
+    if (!process.env.CHRONALOG_REPO_OWNER) {
+      missing.push('CHRONALOG_REPO_OWNER')
+    }
+    if (!process.env.CHRONALOG_REPO_SLUG) {
+      missing.push('CHRONALOG_REPO_SLUG')
+    }
+  }
 
   return NextResponse.json({
     configured: missing.length === 0,
-    missing: missing.length > 0 ? missing : undefined
+    missing: missing.length > 0 ? missing : undefined,
+    note: isServerless && !hasVercelGitVars 
+      ? 'In serverless environments without Git connection, CHRONALOG_REPO_OWNER and CHRONALOG_REPO_SLUG are required'
+      : undefined
   })
 }
 `;
@@ -1062,6 +1081,13 @@ console.log("   - Add to your .env.local:");
 console.log("     CHRONALOG_GITHUB_ID=your_client_id");
 console.log("     CHRONALOG_GITHUB_SECRET=your_client_secret");
 console.log("   - (Optional) Set CHRONALOG_TOKEN_SECRET for production deployments");
-console.log("2. Start your dev server: pnpm dev");
-console.log("3. Visit your dashboard at: http://localhost:3000/chronalog");
+console.log("2. Configure repository settings (for serverless deployments):");
+console.log("   - If deploying to Vercel/Cloudflare Pages without Git connection:");
+console.log("     Add to your environment variables:");
+console.log("     CHRONALOG_REPO_OWNER=your_github_username");
+console.log("     CHRONALOG_REPO_SLUG=your_repo_name");
+console.log("     CHRONALOG_REPO_BRANCH=main");
+console.log("   - Note: If connected to Git, Vercel will auto-detect these values");
+console.log("3. Start your dev server: pnpm dev");
+console.log("4. Visit your dashboard at: http://localhost:3000/chronalog");
 console.log("\nYou can now start creating changelog entries from your dashboard.");

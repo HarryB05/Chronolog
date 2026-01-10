@@ -93,8 +93,27 @@ export function commitChanges(message: string, cwd: string = process.cwd()): str
 
 /**
  * Gets the Git remote URL (origin)
+ * In serverless environments (Vercel), uses environment variables
+ * Falls back to git config in local development
  */
 export function getGitRemoteUrl(cwd: string = process.cwd()): string | null {
+  // In serverless environments, use environment variables
+  if (process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    // First check Vercel's automatic variables (if connected to git)
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      return process.env.VERCEL_GIT_REPO_URL
+    }
+    
+    // Then check Chronalog-specific variables (if not connected to git)
+    const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER
+    const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG
+    
+    if (repoOwner && repoSlug) {
+      return `https://github.com/${repoOwner}/${repoSlug}.git`
+    }
+  }
+  
+  // Fall back to git config for local development
   try {
     if (!isGitRepository(cwd)) {
       return null
@@ -114,8 +133,34 @@ export function getGitRemoteUrl(cwd: string = process.cwd()): string | null {
 
 /**
  * Gets the current Git branch name
+ * In serverless environments (Vercel), uses environment variables
+ * Falls back to git command in local development
  */
 export function getGitBranch(cwd: string = process.cwd()): string | null {
+  // In serverless environments, use environment variables
+  if (process.env.VERCEL === '1' || process.env.CF_PAGES === '1' || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    // First check Vercel's automatic variables (if connected to git)
+    if (process.env.VERCEL_GIT_COMMIT_REF) {
+      return process.env.VERCEL_GIT_COMMIT_REF
+    }
+    
+    // Then check Chronalog-specific variables (if not connected to git)
+    if (process.env.CHRONALOG_REPO_BRANCH) {
+      return process.env.CHRONALOG_REPO_BRANCH
+    }
+    
+    // Fallback to OST_REPO_BRANCH if set
+    if (process.env.OST_REPO_BRANCH) {
+      return process.env.OST_REPO_BRANCH
+    }
+    
+    // Default to main if in production
+    if (process.env.VERCEL_ENV === 'production') {
+      return 'main'
+    }
+  }
+  
+  // Fall back to git command for local development
   try {
     if (!isGitRepository(cwd)) {
       return null

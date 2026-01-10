@@ -133,10 +133,14 @@ declare function stageFile(filePath: string, cwd?: string): void;
 declare function commitChanges(message: string, cwd?: string): string;
 /**
  * Gets the Git remote URL (origin)
+ * In serverless environments (Vercel), uses environment variables
+ * Falls back to git config in local development
  */
 declare function getGitRemoteUrl(cwd?: string): string | null;
 /**
  * Gets the current Git branch name
+ * In serverless environments (Vercel), uses environment variables
+ * Falls back to git command in local development
  */
 declare function getGitBranch(cwd?: string): string | null;
 /**

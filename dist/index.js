@@ -77,6 +77,16 @@ function commitChanges(message, cwd = process.cwd()) {
   }
 }
 function getGitRemoteUrl(cwd = process.cwd()) {
+  if (process.env.VERCEL === "1" || process.env.CF_PAGES === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      return process.env.VERCEL_GIT_REPO_URL;
+    }
+    const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+    const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+    if (repoOwner && repoSlug) {
+      return `https://github.com/${repoOwner}/${repoSlug}.git`;
+    }
+  }
   try {
     if (!isGitRepository(cwd)) {
       return null;
@@ -92,6 +102,20 @@ function getGitRemoteUrl(cwd = process.cwd()) {
   }
 }
 function getGitBranch(cwd = process.cwd()) {
+  if (process.env.VERCEL === "1" || process.env.CF_PAGES === "1" || process.env.AWS_LAMBDA_FUNCTION_NAME) {
+    if (process.env.VERCEL_GIT_COMMIT_REF) {
+      return process.env.VERCEL_GIT_COMMIT_REF;
+    }
+    if (process.env.CHRONALOG_REPO_BRANCH) {
+      return process.env.CHRONALOG_REPO_BRANCH;
+    }
+    if (process.env.OST_REPO_BRANCH) {
+      return process.env.OST_REPO_BRANCH;
+    }
+    if (process.env.VERCEL_ENV === "production") {
+      return "main";
+    }
+  }
   try {
     if (!isGitRepository(cwd)) {
       return null;
@@ -462,7 +486,18 @@ function isServerlessEnvironment() {
 }
 async function saveChangelogEntryViaGitHub(entry, accessToken, remoteUrl, changelogDir, branch = "main") {
   if (!remoteUrl) {
-    throw new Error("Git remote URL is required for GitHub API operations");
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL;
+    } else {
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`;
+      }
+    }
+  }
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.");
   }
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
   if (!repoInfo) {
@@ -523,7 +558,18 @@ async function saveChangelogEntryViaGitHub(entry, accessToken, remoteUrl, change
 }
 async function readChangelogEntryViaGitHub(slug, accessToken, remoteUrl, changelogDir, branch = "main") {
   if (!remoteUrl) {
-    throw new Error("Git remote URL is required for GitHub API operations");
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL;
+    } else {
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`;
+      }
+    }
+  }
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.");
   }
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
   if (!repoInfo) {
@@ -542,7 +588,18 @@ async function readChangelogEntryViaGitHub(slug, accessToken, remoteUrl, changel
 }
 async function listChangelogEntriesViaGitHub(accessToken, remoteUrl, changelogDir, branch = "main") {
   if (!remoteUrl) {
-    throw new Error("Git remote URL is required for GitHub API operations");
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL;
+    } else {
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`;
+      }
+    }
+  }
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.");
   }
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
   if (!repoInfo) {
@@ -1063,7 +1120,18 @@ async function clearLoginSession() {
 // src/utils/github-config.ts
 async function readPredefinedTagsViaGitHub(accessToken, remoteUrl, configDir = "chronalog", branch = "main") {
   if (!remoteUrl) {
-    throw new Error("Git remote URL is required for GitHub API operations");
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL;
+    } else {
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`;
+      }
+    }
+  }
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.");
   }
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
   if (!repoInfo) {
@@ -1090,7 +1158,18 @@ async function readPredefinedTagsViaGitHub(accessToken, remoteUrl, configDir = "
 }
 async function savePredefinedTagsViaGitHub(tags, accessToken, remoteUrl, configDir = "chronalog", branch = "main") {
   if (!remoteUrl) {
-    throw new Error("Git remote URL is required for GitHub API operations");
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL;
+    } else {
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`;
+      }
+    }
+  }
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.");
   }
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
   if (!repoInfo) {
@@ -1136,6 +1215,15 @@ async function savePredefinedTagsViaGitHub(tags, accessToken, remoteUrl, configD
 }
 async function readHomeUrlViaGitHub(accessToken, remoteUrl, configDir = "chronalog", branch = "main") {
   if (!remoteUrl) {
+    const repoOwner = process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+    const repoSlug = process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+    if (repoOwner && repoSlug) {
+      remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`;
+    } else if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL;
+    }
+  }
+  if (!remoteUrl) {
     return "/";
   }
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
@@ -1161,7 +1249,18 @@ async function readHomeUrlViaGitHub(accessToken, remoteUrl, configDir = "chronal
 }
 async function saveHomeUrlViaGitHub(homeUrl, accessToken, remoteUrl, configDir = "chronalog", branch = "main") {
   if (!remoteUrl) {
-    throw new Error("Git remote URL is required for GitHub API operations");
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL;
+    } else {
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`;
+      }
+    }
+  }
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.");
   }
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
   if (!repoInfo) {
@@ -1208,7 +1307,18 @@ async function saveHomeUrlViaGitHub(homeUrl, accessToken, remoteUrl, configDir =
 // src/utils/github-commits.ts
 async function getGitCommitHistoryViaGitHub(accessToken, remoteUrl, limit = 50, branch = "main") {
   if (!remoteUrl) {
-    throw new Error("Git remote URL is required for GitHub API operations");
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL;
+    } else {
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER;
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG;
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`;
+      }
+    }
+  }
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.");
   }
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
   if (!repoInfo) {

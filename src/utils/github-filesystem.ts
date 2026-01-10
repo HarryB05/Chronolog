@@ -35,8 +35,24 @@ export async function saveChangelogEntryViaGitHub(
   changelogDir?: string,
   branch: string = 'main'
 ): Promise<SaveChangelogResult> {
+  // If no remote URL, try to get from environment variables (serverless)
   if (!remoteUrl) {
-    throw new Error('Git remote URL is required for GitHub API operations')
+    // First check Vercel's automatic variables (if connected to git)
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL
+    } else {
+      // Then check Chronalog-specific variables (if not connected to git)
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG
+      
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`
+      }
+    }
+  }
+  
+  if (!remoteUrl) {
+    throw new Error('Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.')
   }
 
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl)
@@ -128,8 +144,24 @@ export async function readChangelogEntryViaGitHub(
   changelogDir?: string,
   branch: string = 'main'
 ): Promise<ParsedChangelogEntry> {
+  // If no remote URL, try to get from environment variables (serverless)
   if (!remoteUrl) {
-    throw new Error('Git remote URL is required for GitHub API operations')
+    // First check Vercel's automatic variables (if connected to git)
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL
+    } else {
+      // Then check Chronalog-specific variables (if not connected to git)
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG
+      
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`
+      }
+    }
+  }
+  
+  if (!remoteUrl) {
+    throw new Error('Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.')
   }
 
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl)
@@ -161,8 +193,24 @@ export async function listChangelogEntriesViaGitHub(
   changelogDir?: string,
   branch: string = 'main'
 ): Promise<ParsedChangelogEntry[]> {
+  // If no remote URL, try to get from environment variables (serverless)
   if (!remoteUrl) {
-    throw new Error('Git remote URL is required for GitHub API operations')
+    // First check Vercel's automatic variables (if connected to git)
+    if (process.env.VERCEL_GIT_REPO_URL) {
+      remoteUrl = process.env.VERCEL_GIT_REPO_URL
+    } else {
+      // Then check Chronalog-specific variables (if not connected to git)
+      const repoOwner = process.env.CHRONALOG_REPO_OWNER || process.env.VERCEL_GIT_REPO_OWNER || process.env.OST_REPO_OWNER
+      const repoSlug = process.env.CHRONALOG_REPO_SLUG || process.env.VERCEL_GIT_REPO_SLUG || process.env.OST_REPO_SLUG
+      
+      if (repoOwner && repoSlug) {
+        remoteUrl = `https://github.com/${repoOwner}/${repoSlug}.git`
+      }
+    }
+  }
+  
+  if (!remoteUrl) {
+    throw new Error('Git remote URL is required for GitHub API operations. Set VERCEL_GIT_REPO_URL, CHRONALOG_REPO_OWNER/CHRONALOG_REPO_SLUG, VERCEL_GIT_REPO_OWNER/VERCEL_GIT_REPO_SLUG, or OST_REPO_OWNER/OST_REPO_SLUG environment variables.')
   }
 
   const repoInfo = parseGitHubRepoFromUrl(remoteUrl)
