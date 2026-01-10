@@ -173,8 +173,32 @@ export async function listChangelogEntriesViaGitHub(
   const config = loadChronalogConfig()
   const targetDir = changelogDir || config.changelogDir
 
-  const client = createGitHubClient(accessToken)
-  const files = await listFiles(client, repoInfo.owner, repoInfo.name, targetDir, branch)
+  // For public repos, we can use REST API without auth
+  // For private repos or when we have a token, use GraphQL
+  let files: Array<{ path: string; name: string; type: string }> = []
+  
+  if (accessToken) {
+    // Use GraphQL with auth
+    const client = createGitHubClient(accessToken)
+    files = await listFiles(client, repoInfo.owner, repoInfo.name, targetDir, branch)
+  } else {
+    // Use REST API for public repos (no auth required)
+    try {
+      const url = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.name}/contents/${targetDir}?ref=${branch}`
+      const response = await fetch(url)
+      if (response.ok) {
+        const data = await response.json()
+        files = Array.isArray(data) ? data.map((item: any) => ({
+          path: item.path,
+          name: item.name,
+          type: item.type,
+        })) : []
+      }
+    } catch (error) {
+      console.error('Failed to list files via REST API:', error)
+      throw error
+    }
+  }
 
   // Filter MDX files
   const mdxFiles = files.filter(
@@ -186,7 +210,28 @@ export async function listChangelogEntriesViaGitHub(
 
   for (const file of mdxFiles) {
     try {
-      const content = await getFileContent(client, repoInfo.owner, repoInfo.name, file.path, branch)
+      let content: string | null = null
+      
+      if (accessToken) {
+        // Use GraphQL with auth
+        const client = createGitHubClient(accessToken)
+        content = await getFileContent(client, repoInfo.owner, repoInfo.name, file.path, branch)
+      } else {
+        // Use REST API for public repos
+        try {
+          const url = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.name}/contents/${file.path}?ref=${branch}`
+          const response = await fetch(url)
+          if (response.ok) {
+            const data = await response.json()
+            if (data.content && data.encoding === 'base64') {
+              content = Buffer.from(data.content, 'base64').toString('utf-8')
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch ${file.name} via REST API:`, error)
+        }
+      }
+      
       if (content) {
         const entry = parseChangelogEntry(content, file.name)
         entries.push(entry)

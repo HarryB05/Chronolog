@@ -69,3 +69,15 @@ export {
   listChangelogEntriesViaGitHub,
   shouldUseGitHubAPI,
 } from "./utils/github-filesystem.js"
+
+export {
+  readPredefinedTagsViaGitHub,
+  savePredefinedTagsViaGitHub,
+  readHomeUrlViaGitHub,
+  saveHomeUrlViaGitHub,
+} from "./utils/github-config.js"
+
+export {
+  getGitCommitHistoryViaGitHub,
+  type GitHubCommit,
+} from "./utils/github-commits.js"

@@ -550,15 +550,51 @@ async function listChangelogEntriesViaGitHub(accessToken, remoteUrl, changelogDi
   }
   const config = loadChronalogConfig();
   const targetDir = changelogDir || config.changelogDir;
-  const client = createGitHubClient(accessToken);
-  const files = await listFiles(client, repoInfo.owner, repoInfo.name, targetDir, branch);
+  let files = [];
+  if (accessToken) {
+    const client = createGitHubClient(accessToken);
+    files = await listFiles(client, repoInfo.owner, repoInfo.name, targetDir, branch);
+  } else {
+    try {
+      const url = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.name}/contents/${targetDir}?ref=${branch}`;
+      const response = await fetch(url);
+      if (response.ok) {
+        const data = await response.json();
+        files = Array.isArray(data) ? data.map((item) => ({
+          path: item.path,
+          name: item.name,
+          type: item.type
+        })) : [];
+      }
+    } catch (error) {
+      console.error("Failed to list files via REST API:", error);
+      throw error;
+    }
+  }
   const mdxFiles = files.filter(
     (file) => (file.name.endsWith(".mdx") || file.name.endsWith(".md")) && file.type === "blob"
   );
   const entries = [];
   for (const file of mdxFiles) {
     try {
-      const content = await getFileContent(client, repoInfo.owner, repoInfo.name, file.path, branch);
+      let content = null;
+      if (accessToken) {
+        const client = createGitHubClient(accessToken);
+        content = await getFileContent(client, repoInfo.owner, repoInfo.name, file.path, branch);
+      } else {
+        try {
+          const url = `https://api.github.com/repos/${repoInfo.owner}/${repoInfo.name}/contents/${file.path}?ref=${branch}`;
+          const response = await fetch(url);
+          if (response.ok) {
+            const data = await response.json();
+            if (data.content && data.encoding === "base64") {
+              content = Buffer.from(data.content, "base64").toString("utf-8");
+            }
+          }
+        } catch (error) {
+          console.warn(`Failed to fetch ${file.name} via REST API:`, error);
+        }
+      }
       if (content) {
         const entry = parseChangelogEntry(content, file.name);
         entries.push(entry);
@@ -1024,6 +1060,212 @@ async function clearLoginSession() {
   });
 }
 
+// src/utils/github-config.ts
+async function readPredefinedTagsViaGitHub(accessToken, remoteUrl, configDir = "chronalog", branch = "main") {
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations");
+  }
+  const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
+  if (!repoInfo) {
+    throw new Error("Could not parse GitHub repository from remote URL");
+  }
+  const configPath = `${configDir}/config.json`;
+  const client = createGitHubClient(accessToken);
+  const content = await getFileContent(client, repoInfo.owner, repoInfo.name, configPath, branch);
+  if (!content) {
+    return [];
+  }
+  try {
+    const data = JSON.parse(content);
+    if (Array.isArray(data)) {
+      return data.filter((tag) => typeof tag === "string");
+    } else if (data && typeof data === "object" && Array.isArray(data.tags)) {
+      return data.tags.filter((tag) => typeof tag === "string");
+    }
+    return [];
+  } catch (error) {
+    console.error("Error parsing config.json:", error);
+    return [];
+  }
+}
+async function savePredefinedTagsViaGitHub(tags, accessToken, remoteUrl, configDir = "chronalog", branch = "main") {
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations");
+  }
+  const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
+  if (!repoInfo) {
+    throw new Error("Could not parse GitHub repository from remote URL");
+  }
+  try {
+    const configPath = `${configDir}/config.json`;
+    const client = createGitHubClient(accessToken);
+    let existingConfig = {};
+    const existingContent = await getFileContent(client, repoInfo.owner, repoInfo.name, configPath, branch);
+    if (existingContent) {
+      try {
+        existingConfig = JSON.parse(existingContent);
+      } catch (error) {
+        console.warn("Error reading existing config, will create new one:", error);
+      }
+    }
+    const validTags = tags.filter((tag) => typeof tag === "string").map((tag) => tag.trim()).filter((tag) => tag.length > 0).sort();
+    const uniqueTags = Array.from(new Set(validTags));
+    const updatedConfig = {
+      ...existingConfig,
+      tags: uniqueTags
+    };
+    const oid = await getBranchOid(client, repoInfo.owner, repoInfo.name, branch);
+    const commitApi = createCommitApi({
+      message: "chore: update predefined tags",
+      owner: repoInfo.owner,
+      oid,
+      name: repoInfo.name,
+      branch
+    });
+    commitApi.replaceFile(configPath, JSON.stringify(updatedConfig, null, 2));
+    const input = commitApi.createInput();
+    await createCommit(client, repoInfo.owner, repoInfo.name, branch, oid, "chore: update predefined tags", input.fileChanges.additions, input.fileChanges.deletions);
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving predefined tags via GitHub API:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    };
+  }
+}
+async function readHomeUrlViaGitHub(accessToken, remoteUrl, configDir = "chronalog", branch = "main") {
+  if (!remoteUrl) {
+    return "/";
+  }
+  const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
+  if (!repoInfo) {
+    return "/";
+  }
+  const configPath = `${configDir}/config.json`;
+  const client = createGitHubClient(accessToken);
+  const content = await getFileContent(client, repoInfo.owner, repoInfo.name, configPath, branch);
+  if (!content) {
+    return "/";
+  }
+  try {
+    const data = JSON.parse(content);
+    if (data && typeof data === "object" && typeof data.homeUrl === "string") {
+      return data.homeUrl.trim() || "/";
+    }
+    return "/";
+  } catch (error) {
+    console.error("Error parsing config.json:", error);
+    return "/";
+  }
+}
+async function saveHomeUrlViaGitHub(homeUrl, accessToken, remoteUrl, configDir = "chronalog", branch = "main") {
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations");
+  }
+  const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
+  if (!repoInfo) {
+    throw new Error("Could not parse GitHub repository from remote URL");
+  }
+  try {
+    const configPath = `${configDir}/config.json`;
+    const client = createGitHubClient(accessToken);
+    let existingConfig = {};
+    const existingContent = await getFileContent(client, repoInfo.owner, repoInfo.name, configPath, branch);
+    if (existingContent) {
+      try {
+        existingConfig = JSON.parse(existingContent);
+      } catch (error) {
+        console.warn("Error reading existing config, will create new one:", error);
+      }
+    }
+    const validHomeUrl = typeof homeUrl === "string" && homeUrl.trim() ? homeUrl.trim() : "/";
+    const updatedConfig = {
+      ...existingConfig,
+      homeUrl: validHomeUrl
+    };
+    const oid = await getBranchOid(client, repoInfo.owner, repoInfo.name, branch);
+    const commitApi = createCommitApi({
+      message: "chore: update home URL",
+      owner: repoInfo.owner,
+      oid,
+      name: repoInfo.name,
+      branch
+    });
+    commitApi.replaceFile(configPath, JSON.stringify(updatedConfig, null, 2));
+    const input = commitApi.createInput();
+    await createCommit(client, repoInfo.owner, repoInfo.name, branch, oid, "chore: update home URL", input.fileChanges.additions, input.fileChanges.deletions);
+    return { success: true };
+  } catch (error) {
+    console.error("Error saving home URL via GitHub API:", error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "Unknown error"
+    };
+  }
+}
+
+// src/utils/github-commits.ts
+async function getGitCommitHistoryViaGitHub(accessToken, remoteUrl, limit = 50, branch = "main") {
+  if (!remoteUrl) {
+    throw new Error("Git remote URL is required for GitHub API operations");
+  }
+  const repoInfo = parseGitHubRepoFromUrl(remoteUrl);
+  if (!repoInfo) {
+    throw new Error("Could not parse GitHub repository from remote URL");
+  }
+  const client = createGitHubClient(accessToken);
+  const query = `
+    query GetCommits($owner: String!, $name: String!, $branch: String!, $limit: Int!) {
+      repository(owner: $owner, name: $name) {
+        ref(qualifiedName: $branch) {
+          target {
+            ... on Commit {
+              history(first: $limit) {
+                edges {
+                  node {
+                    oid
+                    messageHeadline
+                    author {
+                      name
+                      date
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  `;
+  try {
+    const data = await client.request(query, {
+      owner: repoInfo.owner,
+      name: repoInfo.name,
+      branch,
+      limit
+    });
+    if (!data.repository?.ref?.target) {
+      return [];
+    }
+    const commits = data.repository.ref.target.history.edges.map((edge) => {
+      const commit = edge.node;
+      return {
+        hash: commit.oid,
+        shortHash: commit.oid.substring(0, 7),
+        message: commit.messageHeadline,
+        author: commit.author.name,
+        date: commit.author.date
+      };
+    });
+    return commits;
+  } catch (error) {
+    console.error("Error fetching commits via GitHub API:", error);
+    return [];
+  }
+}
+
 // src/index.ts
 function chronalog() {
   return "Chronalog initialised";
@@ -1049,6 +1291,7 @@ export {
   getFileContent,
   getGitBranch,
   getGitCommitHistory,
+  getGitCommitHistoryViaGitHub,
   getGitHubCommitUrl,
   getGitRemoteUrl,
   getLoginSession,
@@ -1067,12 +1310,16 @@ export {
   parseGitHubRepoFromUrl,
   readChangelogEntry,
   readChangelogEntryViaGitHub,
+  readHomeUrlViaGitHub,
   readPredefinedTags,
+  readPredefinedTagsViaGitHub,
   saveChangelogEntry,
   saveChangelogEntryViaGitHub,
   saveHomeUrl,
+  saveHomeUrlViaGitHub,
   saveMediaFile,
   savePredefinedTags,
+  savePredefinedTagsViaGitHub,
   serialiseChangelogEntry,
   setLoginSession,
   shouldUseGitHubAPI,

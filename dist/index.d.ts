@@ -341,6 +341,41 @@ declare function listChangelogEntriesViaGitHub(accessToken: string, remoteUrl: s
  */
 declare function shouldUseGitHubAPI(): boolean;
 
+/**
+ * Reads predefined tags from chronalog/config.json using GitHub API
+ */
+declare function readPredefinedTagsViaGitHub(accessToken: string, remoteUrl: string | null, configDir?: string, branch?: string): Promise<string[]>;
+/**
+ * Saves predefined tags to chronalog/config.json using GitHub API
+ */
+declare function savePredefinedTagsViaGitHub(tags: string[], accessToken: string, remoteUrl: string | null, configDir?: string, branch?: string): Promise<{
+    success: boolean;
+    error?: string;
+}>;
+/**
+ * Reads home URL from chronalog/config.json using GitHub API
+ */
+declare function readHomeUrlViaGitHub(accessToken: string, remoteUrl: string | null, configDir?: string, branch?: string): Promise<string>;
+/**
+ * Saves home URL to chronalog/config.json using GitHub API
+ */
+declare function saveHomeUrlViaGitHub(homeUrl: string, accessToken: string, remoteUrl: string | null, configDir?: string, branch?: string): Promise<{
+    success: boolean;
+    error?: string;
+}>;
+
+interface GitHubCommit {
+    hash: string;
+    shortHash: string;
+    message: string;
+    author: string;
+    date: string;
+}
+/**
+ * Gets git commit history using GitHub API
+ */
+declare function getGitCommitHistoryViaGitHub(accessToken: string, remoteUrl: string | null, limit?: number, branch?: string): Promise<GitHubCommit[]>;
+
 declare function chronalog(): string;
 
-export { type ChronalogConfig, type CommitAPI, type GitCommit, type LoginSession, ParsedChangelogEntry, SaveChangelogRequest, type SaveChangelogResult, autoCommitChangelog, checkCollaborator, checkRepository, chronalog, clearLoginSession, commitChanges, createCommit, createCommitApi, createGitHubClient, fetchGitHubUser, filterChangelogEntriesByTags, getAccessToken, getAllTags, getBranchOid, getDefaultConfig, getFileContent, getGitBranch, getGitCommitHistory, getGitHubCommitUrl, getGitRemoteUrl, getLoginSession, isGitInstalled, isGitRepository, isWorkingDirectoryClean, listChangelogEntries, listChangelogEntriesViaGitHub, listFiles, listMediaFiles, loadChronalogConfig, parseGitHubRepoFromUrl, readChangelogEntry, readChangelogEntryViaGitHub, readPredefinedTags, saveChangelogEntry, saveChangelogEntryViaGitHub, saveHomeUrl, saveMediaFile, savePredefinedTags, setLoginSession, shouldUseGitHubAPI, stageFile };
+export { type ChronalogConfig, type CommitAPI, type GitCommit, type GitHubCommit, type LoginSession, ParsedChangelogEntry, SaveChangelogRequest, type SaveChangelogResult, autoCommitChangelog, checkCollaborator, checkRepository, chronalog, clearLoginSession, commitChanges, createCommit, createCommitApi, createGitHubClient, fetchGitHubUser, filterChangelogEntriesByTags, getAccessToken, getAllTags, getBranchOid, getDefaultConfig, getFileContent, getGitBranch, getGitCommitHistory, getGitCommitHistoryViaGitHub, getGitHubCommitUrl, getGitRemoteUrl, getLoginSession, isGitInstalled, isGitRepository, isWorkingDirectoryClean, listChangelogEntries, listChangelogEntriesViaGitHub, listFiles, listMediaFiles, loadChronalogConfig, parseGitHubRepoFromUrl, readChangelogEntry, readChangelogEntryViaGitHub, readHomeUrlViaGitHub, readPredefinedTags, readPredefinedTagsViaGitHub, saveChangelogEntry, saveChangelogEntryViaGitHub, saveHomeUrl, saveHomeUrlViaGitHub, saveMediaFile, savePredefinedTags, savePredefinedTagsViaGitHub, setLoginSession, shouldUseGitHubAPI, stageFile };
