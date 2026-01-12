@@ -2,6 +2,8 @@
 
 A Git-backed changelog system for Next.js. Manage your changelog entries with a beautiful admin interface. Git-backed, no database, own your data.
 
+Visit [www.chronalog.dev](https://www.chronalog.dev) for more information.
+
 ## Features
 
 - **Git-backed**: All changes are automatically committed to your Git repository. Full version control for your changelog.
